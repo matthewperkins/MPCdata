@@ -1,3 +1,12 @@
+import xlsxwriter
+import numpy as np
+import pandas as pd
+import re
+import os
+import datetime
+import itertools
+    
+
 # pull out lick times 
 rx_dict = {
     'StartDate': re.compile(r'^Start Date: (?P<StartDate>.*)\n'),
@@ -132,4 +141,60 @@ def parse_MPC(filepath):
         # upgrade Score from float to integer
         #data = data.apply(pd.to_numeric, errors='ignore')
     return data
+
+def MPC_to_xlsx(MPC_file_path):
+    fname = MPC_file_path
+    data = parse_MPC(fname)
+    FNre = re.compile(r'(?P<FN>^.*)MPCIV.txt$')
+    m = FNre.search(fname)
+    if (m):
+        FN = m.group('FN')
+    else:
+        FN = fname
+
+    # Create a workbook and add a headersheet.
+    workbook = xlsxwriter.Workbook("%s.xlsx" % FN)
+    headersheet = workbook.add_worksheet('Header')
+
+    row = 0
+    col = 0
+    headersheet.write(row, col, "Start Date")
+    headersheet.write(row, col+1, data.StartDate.strftime("%m/%d/%Y"))
+
+    row+=1
+    headersheet.write(row, col, "End Date")
+    headersheet.write(row, col+1, data.EndDate.strftime("%m/%d/%Y"))
+
+    row+=1
+    headersheet.write(row, col, "Start Time")
+    headersheet.write(row, col+1, data.StartTime.strftime("%H:%M:%S"))
+
+    row+=1
+    headersheet.write(row, col, "End Time")
+    headersheet.write(row, col+1, data.EndTime.strftime("%H:%M:%S"))
+
+    for k in ['Subject', 'Experiment', 'Group', 'Box', 'MSN']:
+        headersheet.write(row,col,k)
+        headersheet.write(row,col+1,getattr(data, k))
+        row+=1
+
+    scalarsheet = workbook.add_worksheet('ScalarVariables')
+    row = 0
+    for k,v in data.ScalarVars.items():
+        scalarsheet.write(row,col,k)
+        scalarsheet.write(row,col+1,v)
+        row+=1
+
+    arraysheet = workbook.add_worksheet('ArrayVariables')
+    row = 0
+    col = 0
+
+    for k,v in data.ArrayVars.items():
+        arraysheet.write(row,col,k)
+        # naive appoarch, don't use numpy functions
+        for (i,num) in enumerate(v):
+            arraysheet.write(i+1,col,num)
+        col+=1
+
+    workbook.close()
 
