@@ -4,7 +4,6 @@ import pandas as pd
 import re
 import os
 import datetime
-import itertools
     
 class MPCData(object):
     def __init__(self):
@@ -20,11 +19,7 @@ class MPCData(object):
         self.StartDateTime = None
         self.ScalarVars = {}
         self.ArrayVars = {}
-<<<<<<< HEAD
       
-=======
-
->>>>>>> 805d487094bdf791bea0cdb58056afd02c55e1a9
 # pull out lick times 
 rx_dict = {
     'StartDate': re.compile(r'^Start Date: (?P<StartDate>.*)\n'),
