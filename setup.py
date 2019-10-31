@@ -5,7 +5,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="MPCdata",
-    version="0.0.2.4",
+    version="0.0.2.5",
     author="Matthew Perkins",
     author_email="matthew.perkins@mssm.edu",
     description="Package to read Med Associates Files MedPCIV",
