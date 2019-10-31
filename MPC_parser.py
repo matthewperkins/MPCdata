@@ -125,7 +125,7 @@ def parse_MPC(filepath):
                 #print('This is the beginning of an Array, ', line)
                 # have now have to step through the array
                 # just pre-index a big array
-                tmp_array = np.zeros((15000,))
+                tmp_array = np.zeros((1000000,))
                 subline = file_object.readline()
                 #print("THis is the first line of the array, ", subline)
                 while subline:
