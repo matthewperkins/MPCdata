@@ -22,18 +22,19 @@ class MPCData(object):
       
 # pull out lick times 
 rx_dict = {
-    'StartDate': re.compile(r'^Start Date: (?P<StartDate>.*)\n'),
-    'EndDate': re.compile(r'^End Date: (?P<EndDate>.*)\n'),
-    'StartTime': re.compile(r'^Start Time: (?P<StartTime>.*)\n'),
-    'EndTime': re.compile(r'^End Time: (?P<EndTime>.*)\n'),
-    'Subject': re.compile(r'^Subject: (?P<Subject>.*)\n'),
-    'Experiment': re.compile(r'^Experiment: (?P<Experiment>.*)\n'),
-    'Group': re.compile(r'^Group: (?P<Group>.*)\n'),
-    'Box': re.compile(r'^Box: (?P<Box>.*)\n'),
-    'MSN': re.compile(r'^MSN: (?P<MSN>.*)\n'),
-    'SCALAR': re.compile(r'(?P<name>[A-Z]{1}): *(?P<value>\d+\.\d*)\n'),
-    'ARRAY': re.compile(r'(?P<name>[A-Z]{1}):\n'),
-    'ARRAYidx': re.compile(r'^ *(?P<index>[0-9]*):(?P<list>.*)\n')
+    'StartDate': re.compile(r'^Start Date: (?P<StartDate>.*)\r\n'),
+    'EndDate': re.compile(r'^End Date: (?P<EndDate>.*)\r\n'),
+    'StartTime': re.compile(r'^Start Time: (?P<StartTime>.*)\r\n'),
+    'EndTime': re.compile(r'^End Time: (?P<EndTime>.*)\r\n'),
+    'Subject': re.compile(r'^Subject: (?P<Subject>.*)\r\n'),
+    'Experiment': re.compile(r'^Experiment: (?P<Experiment>.*)\r\n'),
+    'Group': re.compile(r'^Group: (?P<Group>.*)\r\n'),
+    'Box': re.compile(r'^Box: (?P<Box>.*)\r\n'),
+    'MSN': re.compile(r'^MSN: (?P<MSN>.*)\r\n'),
+    'SCALAR': re.compile(r'(?P<name>[A-Z]{1}): *(?P<value>\d+\.\d*)\r\n'),
+    'ARRAY': re.compile(r'(?P<name>[A-Z]{1}):\r\n'),
+    'ARRAYidx': re.compile(r'^ *(?P<index>[0-9]*):(?P<list>.*)\r\n'),
+    'STARTOFDATA': re.compile(r'\r\r\n')
     }
     
 def _parse_line(line):
@@ -52,6 +53,7 @@ def _parse_line(line):
 
 def parse_MPC(filepath):
     """
+    Need to set this up to parse multiple boxes in one file?
     Parse text at given filepath
 
     Parameters
@@ -66,15 +68,21 @@ def parse_MPC(filepath):
 
     """
 
-    data = MPCData()  # create an empty list to collect the data
     MPCDateStringRe = re.compile(r'\s*(?P<hour>[0-9]+):(?P<minute>[0-9]{2}):(?P<second>[0-9]{2})')
     # open the file and read through it line by line
-    with open(filepath, 'r') as file_object:
+    with open(filepath, 'r', newline = '\n') as file_object:
+        # if the file has multiple boxes in it, return a list of MPC objects
+        MPCDataList = []
         line = file_object.readline()
         while line:
             # at each line check for a match with a regex
             key, match = _parse_line(line)
 
+            # start of data is '\r\r\n'
+            if key=='STARTOFDATA':
+                data = MPCData()  # create a new data object
+                MPCDataList.append(data)
+    
             # extract start date
             if key == 'StartDate':
                 data.StartDate = datetime.datetime.strptime(match.group(key), 
@@ -89,6 +97,9 @@ def parse_MPC(filepath):
                                                                                             'minute',
                                                                                             'second']]
                 data.StartTime = datetime.time(h,m,s)
+                # date should be already read
+                data.StartDateTime = datetime.datetime.combine(data.StartDate, data.StartTime)
+
             # extract end time
             if key == 'EndTime':
                 (h,m,s) = [int(MPCDateStringRe.search(match.group(key)).group(g)) for g in ['hour',
@@ -109,7 +120,7 @@ def parse_MPC(filepath):
                 
             # extract Box
             if key == 'Box':
-                data.Box = match.group(key)   
+                data.Box = int(match.group(key))
             
             # extract MSN
             if key == 'MSN':
@@ -142,18 +153,7 @@ def parse_MPC(filepath):
                     subline = file_object.readline()
                 data.ArrayVars[match.group('name')] = tmp_array[0:idx+len(items)] 
             line = file_object.readline()
-        
-        data.StartDateTime = datetime.datetime.combine(data.StartDate, data.StartTime)
-
-        # create a pandas DataFrame from the list of dicts
-        #data = pd.DataFrame(data)
-        # set the School, Grade, and Student number as the index
-        #data.set_index(['School', 'Grade', 'Student number'], inplace=True)
-        # consolidate df to remove nans
-        #data = data.groupby(level=data.index.names).first()
-        # upgrade Score from float to integer
-        #data = data.apply(pd.to_numeric, errors='ignore')
-    return data
+    return MPCDataList
 
 def MPC_to_xlsx(MPC_file_path):
     fname = MPC_file_path
